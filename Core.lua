@@ -18,10 +18,11 @@ local charDefaults = {
 	restock = {},
 }
 
-ACore.New(ADDON, ns, { db = "AVendorDB", defaults = defaults, char = "AVendorCharDB", charDefaults = charDefaults })
+ACore.New(ADDON, ns, { db = "AVendorDB", defaults = defaults, profile = true, shared = { "neverSell" }, char = "AVendorCharDB", charDefaults = charDefaults })
 
 ACore.Register({
 	name = "AVendor",
+	options = function() return ns.Options() end,
 	title = "AVendor",
 	slash = "/avendor",
 	desc = "restock, bulk buy, sell protection",
