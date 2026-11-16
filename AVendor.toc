@@ -1,0 +1,15 @@
+## Interface: 16001
+## Title: AVendor
+## Notes: Restock lists, bulk buying, sell protection and repair at merchants
+## Version: 0.1.0
+## Category: Merchant
+## IconTexture: Interface\Icons\INV_Misc_Coin_02
+## Dependencies: ACore
+## OptionalDeps: ABag, ALoot, AGear
+## SavedVariables: AVendorDB
+## SavedVariablesPerCharacter: AVendorCharDB
+
+Core.lua
+Merchant.lua
+Protect.lua
+Window.lua
