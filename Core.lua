@@ -11,6 +11,8 @@ local defaults = {
 	protectWish = true,
 	protectUpgrade = true,
 	neverSell = {},
+	alwaysSell = {},
+	sellListed = true,
 	window = { scale = 1 },
 }
 
@@ -18,7 +20,7 @@ local charDefaults = {
 	restock = {},
 }
 
-ACore.New(ADDON, ns, { db = "AVendorDB", defaults = defaults, profile = true, shared = { "neverSell" }, char = "AVendorCharDB", charDefaults = charDefaults })
+ACore.New(ADDON, ns, { db = "AVendorDB", defaults = defaults, profile = true, shared = { "neverSell", "alwaysSell" }, char = "AVendorCharDB", charDefaults = charDefaults })
 
 ACore.Register({
 	name = "AVendor",
@@ -102,6 +104,7 @@ function ns.Options()
 	entries[#entries + 1] = UI.Check(db, "protectRare", "Protect rare and better")
 	entries[#entries + 1] = UI.Check(db, "protectWish", "Protect ALoot wishlist items")
 	entries[#entries + 1] = UI.Check(db, "protectUpgrade", "Protect upgrades")
+	entries[#entries + 1] = UI.Check(db, "sellListed", "Sell the always-sell list at merchants")
 	entries[#entries + 1] = { text = "Repair", title = true }
 	entries[#entries + 1] = UI.Check(db, "repair", "Repair automatically")
 	entries[#entries + 1] = UI.Check(db, "guildRepair", "Use guild funds first")
@@ -122,10 +125,21 @@ SlashCmdList["AVENDOR"] = function(msg)
 		local id = ns.ItemID(rest)
 		if id then
 			ns.db.neverSell[id] = true
+			ns.db.alwaysSell[id] = nil
 			ns.Print("will not sell " .. ns.ItemLink(id) .. " without asking")
 			ns:Fire("LISTS")
 		else
 			ns.Print("/avendor keep <item link or id>")
+		end
+	elseif cmd == "sell" then
+		local id = ns.ItemID(rest)
+		if id then
+			ns.db.alwaysSell[id] = true
+			ns.db.neverSell[id] = nil
+			ns.Print("will always sell " .. ns.ItemLink(id))
+			ns:Fire("LISTS")
+		else
+			ns.Print("/avendor sell <item link or id>")
 		end
 	elseif cmd == "add" then
 		local link, amount = rest:match("^(.-)%s+(%d+)$")
@@ -138,6 +152,6 @@ SlashCmdList["AVENDOR"] = function(msg)
 			ns.Print("/avendor add <item link or id> <amount>")
 		end
 	else
-		ns.Print("/avendor, /avendor restock, /avendor add <item> <amount>, /avendor keep <item>")
+		ns.Print("/avendor, /avendor restock, /avendor add <item> <amount>, /avendor keep <item>, /avendor sell <item>")
 	end
 end

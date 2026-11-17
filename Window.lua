@@ -15,7 +15,7 @@ local function rows()
 			out[#out + 1] = { id = id, name = ns.ItemName(id), amount = amount, have = ns.Count(id) }
 		end
 	else
-		for id in pairs(ns.db.neverSell) do
+		for id in pairs(tab == "sell" and ns.db.alwaysSell or ns.db.neverSell) do
 			out[#out + 1] = { id = id, name = ns.ItemName(id) }
 		end
 	end
@@ -26,6 +26,7 @@ local function rows()
 	if #out == 0 then
 		out[1] = {
 			note = tab == "restock" and "Nothing yet. Alt-right-click an item at a merchant, or use Add item."
+				or tab == "sell" and "Nothing yet. Items here are sold at every merchant visit."
 				or "Nothing yet. Items here are never sold without asking.",
 		}
 	end
@@ -61,8 +62,9 @@ local function createRow(list)
 				ns:Fire("LISTS")
 			end }
 		else
+			local list = tab == "sell" and ns.db.alwaysSell or ns.db.neverSell
 			entries[#entries + 1] = { text = "Remove", func = function()
-				ns.db.neverSell[d.id] = nil
+				list[d.id] = nil
 				ns:Fire("LISTS")
 			end }
 		end
@@ -101,8 +103,13 @@ local function addItem()
 		end
 		if tab == "restock" then
 			setAmount(id)
+		elseif tab == "sell" then
+			ns.db.alwaysSell[id] = true
+			ns.db.neverSell[id] = nil
+			ns:Fire("LISTS")
 		else
 			ns.db.neverSell[id] = true
+			ns.db.alwaysSell[id] = nil
 			ns:Fire("LISTS")
 		end
 	end)
@@ -126,6 +133,12 @@ local function build()
 	end)
 	never:SetPoint("LEFT", restock, "RIGHT", 6, 0)
 	frame.neverTab = never
+	local sell = UI.Button(body, "Always sell", function()
+		tab = "sell"
+		Window.Refresh()
+	end)
+	sell:SetPoint("LEFT", never, "RIGHT", 6, 0)
+	frame.sellTab = sell
 	local add = UI.Button(body, "Add item", addItem)
 	add:SetPoint("TOPRIGHT", -8, -6)
 	frame.addButton = add
@@ -147,6 +160,7 @@ function Window.Refresh()
 	if not frame or not frame:IsShown() then return end
 	frame.restockTab:SetActive(tab == "restock")
 	frame.neverTab:SetActive(tab == "never")
+	frame.sellTab:SetActive(tab == "sell")
 	frame.nowButton:SetShown(tab == "restock")
 	frame.list:SetData(rows(), true)
 end

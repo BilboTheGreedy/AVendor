@@ -13,7 +13,7 @@ function Merchant.Info(i)
 		local ok, t = pcall(C_MerchantFrame.GetItemInfo, i)
 		if ok and type(t) == "table" then
 			return {
-				name = t.name, price = t.price or 0, stack = t.stackCount or 1, available = t.numAvailable,
+				name = t.name, price = t.price or 0, stack = (t.stackCount or 0) > 0 and t.stackCount or 1, available = t.numAvailable,
 				usable = t.isUsable, extended = t.hasExtendedCost,
 			}
 		end
@@ -21,7 +21,7 @@ function Merchant.Info(i)
 	if GetMerchantItemInfo then
 		local name, _, price, stack, available, usable, extended = GetMerchantItemInfo(i)
 		if name then
-			return { name = name, price = price or 0, stack = stack or 1, available = available, usable = usable, extended = extended }
+			return { name = name, price = price or 0, stack = (stack or 0) > 0 and stack or 1, available = available, usable = usable, extended = extended }
 		end
 	end
 	return nil
@@ -66,7 +66,7 @@ function Merchant.Buy(i, amount)
 		local batches = math.min(math.ceil(left / info.stack), 40)
 		for _ = 1, batches do
 			if spent + info.price > funds then break end
-			BuyMerchantItem(i, 1)
+			BuyMerchantItem(i)
 			bought = bought + info.stack
 			spent = spent + info.price
 		end
@@ -252,6 +252,7 @@ function Merchant.Click(button, mouse)
 		local bought, spent = Merchant.Buy(i, n)
 		if bought > 0 then ns.Print("bought " .. bought .. "x " .. (info.name or "") .. " for " .. ACore.Money(spent)) end
 	elseif shift and mouse == "RightButton" then
+		if StackSplitFrame and StackSplitFrame.Hide then StackSplitFrame:Hide() end
 		UI.Prompt("Buy how many " .. (info.name or "") .. "?", tostring(maxStack(i)), function(text)
 			local n = tonumber(text)
 			if not n or n < 1 then return end
@@ -266,6 +267,7 @@ ns:On("MERCHANT_SHOW", function()
 		if not open() then return end
 		Merchant.Repair()
 		if ns.db.restock then Merchant.Restock() end
+		if ns.db.sellListed and ns.Protect then ns.Protect.SellListed() end
 		Merchant.Decorate()
 	end)
 end)

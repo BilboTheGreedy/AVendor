@@ -14,8 +14,8 @@ end
 local function slotInfo(bag, slot)
 	if C_Container and C_Container.GetContainerItemInfo then
 		local ok, t = pcall(C_Container.GetContainerItemInfo, bag, slot)
-		if ok and type(t) == "table" and t.itemID then
-			return { id = t.itemID, link = t.hyperlink, quality = t.quality, count = t.stackCount or 1, noValue = t.hasNoValue }
+		if ok and type(t) == "table" and not ns.IsSecret(t.itemID) and t.itemID then
+			return { id = t.itemID, link = t.hyperlink, quality = t.quality, count = t.stackCount or 1, noValue = t.hasNoValue, locked = t.isLocked }
 		end
 	elseif GetContainerItemInfo then
 		local _, n, _, quality, _, _, link, _, noValue, id = GetContainerItemInfo(bag, slot)
@@ -61,6 +61,12 @@ function Protect.Reason(it)
 	if db.protectWish and wished(it.id) then return "is on your ALoot wishlist" end
 	if db.protectRare and type(it.quality) == "number" and it.quality >= 3 then return "is rare or better" end
 	return nil
+end
+
+AVendor = AVendor or {}
+function AVendor.IsProtected(id, link, quality)
+	if not ns.db or type(id) ~= "number" then return false end
+	return Protect.Reason({ id = id, link = link, quality = quality }) ~= nil
 end
 
 local function use(bag, slot)
@@ -114,9 +120,45 @@ function Protect.Used(bag, slot)
 			allow[it.id] = true
 			ns.After(0.5, function()
 				if open() then resell(it.id) end
+				ns.After(1.5, function() allow[it.id] = nil end)
 			end)
 		end)
 	end)
+end
+
+local selling
+
+local function sellStep(count, tried)
+	if not open() then
+		selling = nil
+		return
+	end
+	local n = 0
+	for bag = 0, 4 do
+		for slot = 1, slots(bag) do
+			local it = slotInfo(bag, slot)
+			local key = bag * 100 + slot
+			if n < 6 and it and ns.db.alwaysSell[it.id] and not ns.db.neverSell[it.id] and not it.noValue and not it.locked and (tried[key] or 0) < 2 then
+				tried[key] = (tried[key] or 0) + 1
+				allow[it.id] = true
+				use(bag, slot)
+				n = n + 1
+			end
+		end
+	end
+	count = count + n
+	if n == 0 or count >= 120 then
+		selling = nil
+		if count > 0 then ns.Print("sold " .. count .. (count == 1 and " listed stack" or " listed stacks")) end
+		return
+	end
+	ns.After(0.4, function() sellStep(count, tried) end)
+end
+
+function Protect.SellListed()
+	if selling or not open() or not next(ns.db.alwaysSell) then return end
+	selling = true
+	sellStep(0, {})
 end
 
 ns:On("MERCHANT_SHOW", function()
@@ -125,6 +167,7 @@ ns:On("MERCHANT_SHOW", function()
 end)
 ns:On("MERCHANT_CLOSED", function()
 	allow = {}
+	selling = nil
 end)
 ns:On("BAG_UPDATE_DELAYED", function()
 	if open() then ns.Debounce("snap", 0.6, Protect.Snap) end
